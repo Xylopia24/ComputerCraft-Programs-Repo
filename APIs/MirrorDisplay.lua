@@ -25,22 +25,17 @@ local MirrorDisplay = {
 local function createFramedWindow(monitor, width, height, title)
     local monitorWidth, monitorHeight = monitor.getSize()
 
-    -- Calculate offsets to center the window
     local offsetX = math.floor((monitorWidth - width) / 2)
     local offsetY = math.floor((monitorHeight - height) / 2)
 
-    -- Create the window
     local win = window.create(monitor, offsetX + 1, offsetY + 1, width, height, false)
 
-    -- Draw frame
     monitor.setBackgroundColor(colors.black)
     monitor.setTextColor(colors.lightBlue)
 
-    -- Draw top and bottom borders
     local borderTop = BORDER_CHARS.corner .. string.rep(BORDER_CHARS.horizontal, width-2) .. BORDER_CHARS.corner
     local borderBottom = borderTop
 
-    -- If there's a title, incorporate it into the top border
     if title then
         local titleStart = math.floor((width - #title) / 2)
         borderTop = BORDER_CHARS.corner ..
@@ -50,13 +45,11 @@ local function createFramedWindow(monitor, width, height, title)
                    BORDER_CHARS.corner
     end
 
-    -- Draw borders
     monitor.setCursorPos(offsetX, offsetY)
     monitor.write(borderTop)
     monitor.setCursorPos(offsetX, offsetY + height + 1)
     monitor.write(borderBottom)
 
-    -- Draw vertical borders
     for y = 1, height do
         monitor.setCursorPos(offsetX, offsetY + y)
         monitor.write(BORDER_CHARS.vertical)
@@ -64,15 +57,12 @@ local function createFramedWindow(monitor, width, height, title)
         monitor.write(BORDER_CHARS.vertical)
     end
 
-    -- Initialize window with correct size and position
     local win = window.create(monitor, offsetX + 2, offsetY + 1, width, height, false)
 
-    -- Set window properties to match terminal
     win.setBackgroundColor(colors.black)
     win.setTextColor(colors.white)
     win.clear()
 
-    -- Store window dimensions
     win.getSize = function()
         return width, height
     end
@@ -82,21 +72,17 @@ end
 
 -- Draw frame directly on monitor
 local function drawFrame(monitor, width, height, title, offsetX, offsetY)
-    -- Store original colors
     local oldBg = monitor.getBackgroundColor()
     local oldFg = monitor.getTextColor()
 
     monitor.setBackgroundColor(colors.black)
     monitor.setTextColor(colors.lightBlue)
 
-    -- Add extra offset for frame only
-    offsetX = offsetX + 1  -- Move frame right by 2
-    offsetY = offsetY + 1  -- Move frame down by 1
+    offsetX = offsetX + 1
+    offsetY = offsetY + 1
 
-    -- Increase frame width by 1
     width = width + 1
 
-    -- Draw top and bottom borders
     local borderTop = BORDER_CHARS.corner .. string.rep(BORDER_CHARS.horizontal, width) .. BORDER_CHARS.corner
     if title then
         local titleStart = math.floor((width - #title) / 2)
@@ -112,7 +98,6 @@ local function drawFrame(monitor, width, height, title, offsetX, offsetY)
     monitor.setCursorPos(offsetX, offsetY + height + 1)
     monitor.write(BORDER_CHARS.corner .. string.rep(BORDER_CHARS.horizontal, width) .. BORDER_CHARS.corner)
 
-    -- Draw vertical borders
     for y = 1, height do
         monitor.setCursorPos(offsetX, offsetY + y)
         monitor.write(BORDER_CHARS.vertical)
@@ -120,7 +105,6 @@ local function drawFrame(monitor, width, height, title, offsetX, offsetY)
         monitor.write(BORDER_CHARS.vertical)
     end
 
-    -- Restore colors
     monitor.setBackgroundColor(oldBg)
     monitor.setTextColor(oldFg)
 end
@@ -130,7 +114,6 @@ local function createMultiTable(...)
     local terms = {...}
     local output = {}
 
-    -- Create wrapper functions that properly mirror all operations
     local function wrapFunction(func, name)
         return function(...)
             local results
@@ -143,14 +126,12 @@ local function createMultiTable(...)
         end
     end
 
-    -- Get all functions from the first terminal
     for k, v in pairs(terms[1]) do
         if type(v) == "function" then
             output[k] = wrapFunction(v, k)
         end
     end
 
-    -- Override specific functions that need special handling
     output.write = function(text)
         for _, term in ipairs(terms) do
             pcall(function()
@@ -170,20 +151,16 @@ local function createMultiTable(...)
     end
 
     output.getSize = function()
-        return terms[1].getSize()  -- Always use original terminal size
+        return terms[1].getSize()
     end
 
-    -- Override clear to preserve frame
     output.clear = function()
-        -- Clear original terminal
         terms[1].clear()
 
-        -- Clear window contents only, not frame
         if terms[2] then
             pcall(function()
                 terms[2].setBackgroundColor(colors.black)
                 terms[2].clear()
-                -- Redraw frame after clear
                 MirrorDisplay.redrawFrame()
             end)
         end
@@ -196,29 +173,24 @@ end
 function MirrorDisplay.initialize(monitorName, title)
     MirrorDisplay.originalTerm = term.current()
 
-    -- Get monitor
     local monitor = peripheral.wrap(monitorName)
     if not monitor then
         return false
     end
 
-    -- Set up monitor with exact terminal dimensions
     local termW, termH = term.getSize()
-    monitor.setTextScale(0.5)  -- This should give us the right size for 90x27
+    monitor.setTextScale(0.5)
     monitor.setBackgroundColor(colors.black)
     monitor.clear()
 
-    -- Calculate frame position with +1 offset for both x and y
     local mw, mh = monitor.getSize()
     local ox = math.floor((mw - termW) / 2) - 1
     local oy = math.floor((mh - termH) / 2) - 1
 
-    -- Create window inside frame area with adjusted position
     MirrorDisplay.window = window.create(monitor, ox + 2, oy + 2, termW, termH, true)
     MirrorDisplay.monitor = monitor
     MirrorDisplay.frameOffset = {x = ox, y = oy}
 
-    -- Draw initial frame at new position
     drawFrame(monitor, termW, termH, title, ox, oy)
 
     return true
@@ -238,15 +210,12 @@ end
 function MirrorDisplay.start()
     if not MirrorDisplay.monitor or not MirrorDisplay.window then return false end
 
-    -- Create multi-terminal that combines original terminal and window
     local multiTerm = createMultiTable(term.current(), MirrorDisplay.window)
 
-    -- Store current terminal and redirect
     MirrorDisplay.originalTerm = term.current()
     term.redirect(multiTerm)
     MirrorDisplay.active = true
 
-    -- Ensure window is visible
     MirrorDisplay.window.setVisible(true)
     MirrorDisplay.window.redraw()
 
