@@ -67,8 +67,7 @@ MIT License - Feel free to use in your own projects!
 ## Author
 
 Created by Xylopia (Vinyl)
-- GitHub: [Your GitHub]
-- Discord: [Your Discord if you want to share]
+- Discord: @xylopia
 
 ---
 *More programs and documentation coming soon!*
